@@ -22,7 +22,7 @@ export default function Pricing() {
                     </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-stretch max-w-2xl mx-auto">
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-center justify-center max-w-2xl mx-auto">
                     {/* Monthly */}
                     <PricingCard
                         title="Monthly"
@@ -70,36 +70,42 @@ export default function Pricing() {
 function PricingCard({ title, price, period, trial, featured, badge }) {
     return (
         <div
-            className={`reveal flex-1 rounded-3xl p-6 md:p-8 flex flex-col gap-5 md:gap-6 transition-all duration-300 ${featured
-                ? 'bg-brand-dark text-white shadow-2xl sm:scale-[1.02]'
-                : 'bg-white text-brand-dark shadow-sm'
+            className={`reveal flex-1 w-full rounded-[24px] p-5 md:p-6 flex flex-col gap-4 transition-all duration-300 bg-white text-brand-dark shadow-sm border border-transparent ${featured
+                ? 'ring-2 ring-brand-orange/20 shadow-[0_15px_40px_rgba(217,94,58,0.12)] animate-float scale-100 sm:scale-[1.03] z-10'
+                : 'opacity-90'
                 }`}
         >
-            {badge && (
-                <span className="pill bg-brand-orange/20 text-brand-orange self-start text-[10px]">{badge}</span>
-            )}
-
-            <div>
-                <div className="text-sm font-semibold mb-2 opacity-60 tracking-wide">{title}</div>
-                <div className="flex items-baseline gap-1">
-                    <span className="font-display font-bold text-4xl md:text-5xl">$</span>
-                    <span className="font-display font-bold text-4xl md:text-5xl tracking-tight">{price.substring(1)}</span>
-                    <span className="text-sm opacity-50 ml-2">{period}</span>
+            <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2 h-5">
+                    <div className="text-xs font-semibold opacity-60 tracking-wide uppercase">{title}</div>
+                    {badge && (
+                        <span className="pill bg-brand-orange/10 text-brand-orange text-[9px] py-0.5 px-2 normal-case whitespace-nowrap">{badge}</span>
+                    )}
                 </div>
-                <div className="text-sm mt-2 text-brand-orange font-medium">{trial}</div>
+
+                <div>
+                    <div className="flex items-baseline gap-1">
+                        <span className="font-display font-bold text-3xl md:text-4xl">$</span>
+                        <span className="font-display font-bold text-3xl md:text-4xl tracking-tight">{price.substring(1)}</span>
+                        <span className="text-xs opacity-50 ml-1">{period}</span>
+                    </div>
+                    <div className="text-xs mt-1 text-brand-orange font-medium">{trial}</div>
+                </div>
             </div>
 
-            <a
-                href="#"
-                className={`w-full py-3.5 md:py-4 rounded-2xl font-semibold text-center transition-all duration-200 hover:-translate-y-0.5 text-sm md:text-base ${featured
-                    ? 'bg-brand-orange text-white hover:bg-orange-600 hover:shadow-lg hover:shadow-brand-orange/30'
-                    : 'bg-brand-cream text-brand-dark hover:bg-brand-orange hover:text-white'
-                    }`}
-            >
-                Start free trial
-            </a>
+            <div className="flex flex-col gap-3">
+                <a
+                    href="#"
+                    className={`w-full py-3 rounded-xl font-semibold text-center transition-all duration-200 hover:-translate-y-0.5 text-sm ${featured
+                        ? 'bg-brand-orange text-white shadow-md shadow-brand-orange/20'
+                        : 'bg-brand-cream text-brand-dark hover:bg-brand-orange/10'
+                        }`}
+                >
+                    Start free trial
+                </a>
 
-            <p className="text-xs opacity-40 text-center">Free to download. Cancel anytime.</p>
+                <p className="text-[10px] opacity-40 text-center">Cancel anytime.</p>
+            </div>
         </div>
     )
 }
