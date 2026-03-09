@@ -74,7 +74,7 @@ export default function HowItWorks() {
                         {steps.map((step, i) => (
                             <div
                                 key={step.number}
-                                className={`reveal flex items-center gap-6 ${i % 2 === 1 ? 'flex-row-reverse' : 'flex-row'}`}
+                                className={`reveal flex items-center gap-12 md:gap-16 ${i % 2 === 1 ? 'flex-row-reverse' : 'flex-row'}`}
                                 style={{ transitionDelay: `${i * 0.12}s` }}
                             >
                                 {/* Card */}
