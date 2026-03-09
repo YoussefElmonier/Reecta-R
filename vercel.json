@@ -18,5 +18,11 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/r/:shareId",
+      "destination": "/index.html"
+    }
   ]
 }
