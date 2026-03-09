@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.manzalawy.receta",
+      "sha256_cert_fingerprints": [
+        "9a:c8:57:b1:02:da:4c:86:4c:d9:fc:f9:2f:8f:98:cc:3f:e8:d6:8f:28:1d:9a:bb:a2:18:ad:28:b4:0a:0f:7f",
+        "f8:03:41:f1:7c:9d:b7:0f:8a:23:23:93:eb:50:38:b7:dc:6f:1f:e6:e8:11:80:66:63:cf:11:d6:22:88:cf:ff"
+      ]
+    }
+  }
+]
