@@ -47,10 +47,105 @@ function titleCase(text) {
     .join(' ')
 }
 
+const ingredientCategoryDisplay = {
+  fruitsAndVegetables: 'Fruits & Veggies',
+  herbsAndSpices: 'Herbs & Spices',
+  meat: 'Meat',
+  poultry: 'Poultry',
+  seafood: 'Seafood',
+  eggs: 'Eggs',
+  plantBasedProtein: 'Plant Protein',
+  dairy: 'Dairy',
+  grains: 'Grains',
+  bread: 'Bread',
+  bakingIngredients: 'Baking',
+  sweeteners: 'Sweeteners',
+  pantry: 'Pantry',
+  sauces: 'Sauces',
+  oils: 'Oils',
+  vinegars: 'Vinegars',
+  frozen: 'Frozen',
+  drinks: 'Drinks',
+  other: 'Other',
+}
+
+function normalizeCategoryToken(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z]/g, '')
+}
+
+function toCanonicalIngredientCategory(rawCategory) {
+  const normalized = normalizeCategoryToken(rawCategory)
+
+  switch (normalized) {
+    case 'fruitsandvegetables':
+    case 'fruitsveggies':
+    case 'fruitsveg':
+    case 'produce':
+      return 'fruitsAndVegetables'
+    case 'herbsandspices':
+    case 'herbs':
+    case 'spices':
+      return 'herbsAndSpices'
+    case 'meat':
+      return 'meat'
+    case 'poultry':
+      return 'poultry'
+    case 'seafood':
+      return 'seafood'
+    case 'eggs':
+      return 'eggs'
+    case 'plantbasedprotein':
+    case 'plantprotein':
+    case 'plantbased':
+      return 'plantBasedProtein'
+    case 'dairy':
+      return 'dairy'
+    case 'dairyalternatives':
+    case 'dairyalternative':
+    case 'grains':
+      return 'grains'
+    case 'bread':
+      return 'bread'
+    case 'bakingingredients':
+    case 'bakingingredient':
+    case 'baking':
+      return 'bakingIngredients'
+    case 'sweeteners':
+    case 'sweetener':
+      return 'sweeteners'
+    case 'pantry':
+      return 'pantry'
+    case 'sauces':
+    case 'sauce':
+      return 'sauces'
+    case 'vinegars':
+    case 'vinegar':
+      return 'vinegars'
+    case 'oilsandvinegars':
+    case 'oilsandvinegar':
+    case 'oils':
+    case 'oil':
+      return 'oils'
+    case 'frozen':
+      return 'frozen'
+    case 'drinks':
+    case 'drink':
+    case 'beverages':
+    case 'alcohol':
+      return 'drinks'
+    case 'other':
+    default:
+      return 'other'
+  }
+}
+
 function parseIngredientValue(value) {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     return {
-      category: String(value.category || 'other').trim().toLowerCase() || 'other',
+      category: toCanonicalIngredientCategory(value.category),
       quantity: String(value.quantity || '').trim(),
     }
   }
@@ -62,11 +157,11 @@ function parseIngredientValue(value) {
 
   const parts = raw.split('|').map((part) => part.trim())
   if (parts.length === 1) {
-    return { category: parts[0].toLowerCase() || 'other', quantity: '' }
+    return { category: toCanonicalIngredientCategory(parts[0]), quantity: '' }
   }
 
   return {
-    category: parts[0].toLowerCase() || 'other',
+    category: toCanonicalIngredientCategory(parts[0]),
     quantity: parts.slice(1).join('|'),
   }
 }
@@ -92,7 +187,7 @@ function normalizeIngredients(raw) {
 
   return Array.from(grouped.entries())
     .map(([group, items]) => ({
-      title: titleCase(group),
+      title: ingredientCategoryDisplay[group] || titleCase(group),
       items: items.sort((a, b) => a.localeCompare(b)),
     }))
     .sort((a, b) => a.title.localeCompare(b.title))
