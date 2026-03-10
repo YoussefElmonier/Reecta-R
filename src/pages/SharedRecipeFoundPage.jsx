@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AlertCircle,
   CheckCircle2,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import StoreBadgeButton from '../components/StoreBadgeButton'
 
 function normalizeOptionalField(value) {
   if (value === null || value === undefined) return '—'
@@ -338,7 +339,8 @@ export default function SharedRecipeFoundPage({ shareId }) {
   const [imageFailed, setImageFailed] = useState(false)
   const [refreshCount, setRefreshCount] = useState(0)
 
-  const openInAppUrl = useMemo(() => `https://reecta-r.vercel.app/r/${shareId}`, [shareId])
+  const appStoreUrl = import.meta.env.VITE_APP_STORE_URL || '#'
+  const googlePlayUrl = import.meta.env.VITE_GOOGLE_PLAY_URL || '#'
 
   useEffect(() => {
     let cancelled = false
@@ -537,19 +539,20 @@ export default function SharedRecipeFoundPage({ shareId }) {
                 Save this recipe, auto-build grocery lists, and follow step mode hands-free.
               </p>
 
-              <a
-                href={openInAppUrl}
-                className="btn-primary mt-6 w-full !justify-center"
-                aria-label="Open recipe in Receta app"
-              >
-                Open in Receta
-              </a>
-              <a
-                href="#"
-                className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-black/10 px-5 py-3 text-sm font-semibold text-brand-dark hover:border-brand-orange hover:text-brand-orange transition-colors"
-              >
-                Download the app
-              </a>
+              <div className="mt-6 flex flex-col gap-3">
+                <StoreBadgeButton
+                  icon="apple"
+                  label="Download on the"
+                  store="App Store"
+                  href={appStoreUrl}
+                />
+                <StoreBadgeButton
+                  icon="google"
+                  label="Get it on"
+                  store="Google Play"
+                  href={googlePlayUrl}
+                />
+              </div>
 
               <div className="mt-7 pt-6 border-t border-black/10">
                 <p className="font-semibold text-brand-dark">Why Receta?</p>
@@ -565,6 +568,12 @@ export default function SharedRecipeFoundPage({ shareId }) {
                     </li>
                   ))}
                 </ul>
+                <a
+                  href="/"
+                  className="mt-5 inline-flex w-full items-center justify-center rounded-xl border border-black/10 px-5 py-3 text-sm font-semibold text-brand-dark hover:border-brand-orange hover:text-brand-orange transition-colors"
+                >
+                  Tell me more
+                </a>
               </div>
             </div>
           </aside>
