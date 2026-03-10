@@ -11,8 +11,13 @@ import CookMode from './components/CookMode'
 import Pricing from './components/Pricing'
 import CTA from './components/CTA'
 import Footer from './components/Footer'
+import SharedRecipeFoundPage from './pages/SharedRecipeFoundPage'
 
 function App() {
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '/'
+  const shareMatch = pathname.match(/^\/r\/([^/]+)\/?$/)
+  const shareId = shareMatch ? decodeURIComponent(shareMatch[1]) : null
+
   useEffect(() => {
     // Initialize Lenis
     const lenis = new Lenis({
@@ -45,6 +50,16 @@ function App() {
       lenis.destroy()
     }
   }, [])
+
+  if (shareId) {
+    return (
+      <div className="min-h-screen bg-brand-cream overflow-x-hidden">
+        <Navbar />
+        <SharedRecipeFoundPage shareId={shareId} />
+        <Footer />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-brand-cream overflow-x-hidden">
