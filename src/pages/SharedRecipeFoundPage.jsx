@@ -1,68 +1,307 @@
+import { useEffect, useMemo, useState } from 'react'
 import {
+  AlertCircle,
   CheckCircle2,
   Clock3,
+  Loader2,
   PlayCircle,
   ShoppingBasket,
   Sparkles,
   Users,
   UtensilsCrossed,
 } from 'lucide-react'
-import recipeHeroImage from '../assets/IMG_6805.webp'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../lib/firebase'
 
-const recipe = {
-  title: 'Classic Eggs Benedict',
-  subtitle:
-    'A brunch classic with toasted muffins, Canadian bacon, poached eggs, and silky hollandaise.',
-  image: recipeHeroImage,
-  servings: '2',
-  prep: '15m',
-  cook: '10m',
-  source: 'Imported from YouTube',
-  ingredientGroups: [
-    {
-      title: 'Dairy & Eggs',
-      items: ['4 large eggs', '1/2 cup unsalted butter', '3 egg yolks', 'Splash of heavy cream'],
-    },
-    {
-      title: 'Bread & Meat',
-      items: ['2 English muffins', '4 slices Canadian bacon'],
-    },
-    {
-      title: 'Produce & Pantry',
-      items: ['1 tbsp lemon juice', 'Pinch of cayenne pepper', 'Fresh chives', '1 tsp white vinegar'],
-    },
-  ],
-  steps: [
-    {
-      section: 'The Hollandaise',
-      points: [
-        'Melt the butter in a small saucepan. Blend yolks, lemon juice, and cayenne.',
-        'Slowly drizzle in warm butter while blending until thick and creamy.',
-      ],
-    },
-    {
-      section: 'The Eggs',
-      points: [
-        'Bring water to a gentle simmer, add vinegar, then crack eggs into ramekins.',
-        'Create a gentle whirlpool and poach eggs for 3 to 4 minutes.',
-      ],
-    },
-    {
-      section: 'Assembly',
-      points: [
-        'Toast muffins and top with Canadian bacon, poached eggs, and hollandaise. Finish with chives.',
-      ],
-    },
-  ],
+function normalizeOptionalField(value) {
+  if (value === null || value === undefined) return '—'
+  const text = String(value).trim()
+  if (!text || text.toLowerCase() === 'null') return '—'
+  return text
+}
+
+function toDateValue(value) {
+  if (!value) return null
+  if (value instanceof Date) return value
+  if (typeof value === 'number') return new Date(value)
+  if (typeof value === 'string') {
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+  if (typeof value?.toDate === 'function') {
+    try {
+      return value.toDate()
+    } catch {
+      return null
+    }
+  }
+  return null
+}
+
+function titleCase(text) {
+  return text
+    .replace(/[_-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function parseIngredientValue(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return {
+      category: String(value.category || 'other').trim().toLowerCase() || 'other',
+      quantity: String(value.quantity || '').trim(),
+    }
+  }
+
+  const raw = String(value || '').trim()
+  if (!raw) {
+    return { category: 'other', quantity: '' }
+  }
+
+  const parts = raw.split('|').map((part) => part.trim())
+  if (parts.length === 1) {
+    return { category: parts[0].toLowerCase() || 'other', quantity: '' }
+  }
+
+  return {
+    category: parts[0].toLowerCase() || 'other',
+    quantity: parts.slice(1).join('|'),
+  }
+}
+
+function normalizeIngredients(raw) {
+  const grouped = new Map()
+
+  if (!raw || typeof raw !== 'object') return []
+
+  Object.entries(raw).forEach(([name, value]) => {
+    const trimmedName = String(name || '').trim()
+    if (!trimmedName) return
+
+    const parsed = parseIngredientValue(value)
+    const groupKey = parsed.category || 'other'
+    const formattedItem = parsed.quantity ? `${parsed.quantity} ${trimmedName}` : trimmedName
+
+    if (!grouped.has(groupKey)) {
+      grouped.set(groupKey, [])
+    }
+    grouped.get(groupKey).push(formattedItem)
+  })
+
+  return Array.from(grouped.entries())
+    .map(([group, items]) => ({
+      title: titleCase(group),
+      items: items.sort((a, b) => a.localeCompare(b)),
+    }))
+    .sort((a, b) => a.title.localeCompare(b.title))
+}
+
+function normalizeSteps(rawSteps, rawMethod) {
+  const source = rawSteps ?? rawMethod
+  if (!source) return []
+
+  if (Array.isArray(source)) {
+    return source
+      .map((item) => {
+        if (typeof item === 'string') {
+          return { section: null, points: [item] }
+        }
+        if (!item || typeof item !== 'object') return null
+
+        const points = Array.isArray(item.steps)
+          ? item.steps.map((step) => String(step).trim()).filter(Boolean)
+          : item.steps
+            ? [String(item.steps).trim()].filter(Boolean)
+            : []
+
+        return {
+          section: item.sectionTitle ? String(item.sectionTitle) : null,
+          points,
+        }
+      })
+      .filter((item) => item && item.points.length > 0)
+  }
+
+  if (source && typeof source === 'object') {
+    const points = Array.isArray(source.steps)
+      ? source.steps.map((step) => String(step).trim()).filter(Boolean)
+      : source.steps
+        ? [String(source.steps).trim()].filter(Boolean)
+        : []
+
+    if (!points.length) return []
+    return [{ section: source.sectionTitle ? String(source.sectionTitle) : null, points }]
+  }
+
+  return []
+}
+
+function getSourceLabel(url, importType) {
+  if (url) {
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, '')
+      return `Imported from ${host}`
+    } catch {
+      return 'Imported recipe'
+    }
+  }
+
+  if (importType) {
+    return `Imported from ${titleCase(String(importType))}`
+  }
+
+  return 'Imported recipe'
+}
+
+function mapRecipeDocument(shareId, data) {
+  const ingredientGroups = normalizeIngredients(data.ingredients)
+  const steps = normalizeSteps(data.steps, data.method)
+
+  return {
+    id: shareId,
+    title: String(data.name || '').trim() || 'Untitled Recipe',
+    imageUrl: data.thumbnailUrl ? String(data.thumbnailUrl).trim() : '',
+    servings: normalizeOptionalField(data.servings),
+    prep: normalizeOptionalField(data.prepTime),
+    cook: normalizeOptionalField(data.cookTime),
+    source: getSourceLabel(data.url, data.importType),
+    ingredientGroups,
+    steps,
+  }
+}
+
+function LoadingState() {
+  return (
+    <main className="pt-32 pb-16 px-6">
+      <div className="max-w-6xl mx-auto">
+        <section className="feature-card flex flex-col items-center justify-center text-center py-16">
+          <Loader2 className="w-10 h-10 text-brand-orange animate-spin" />
+          <h1 className="mt-5 font-display text-4xl text-brand-dark">Loading recipe...</h1>
+          <p className="mt-2 text-brand-muted">
+            Fetching shared recipe details from Receta. This usually takes a second.
+          </p>
+        </section>
+      </div>
+    </main>
+  )
+}
+
+function LinkExpiredState() {
+  return (
+    <main className="pt-32 pb-16 px-6">
+      <div className="max-w-6xl mx-auto">
+        <section className="feature-card text-center py-14 md:py-20">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-brand-orange/10 text-brand-orange flex items-center justify-center">
+            <AlertCircle size={30} />
+          </div>
+          <h1 className="mt-6 font-display text-4xl md:text-5xl text-brand-dark">Link Expired</h1>
+          <p className="mt-3 text-brand-muted max-w-xl mx-auto leading-relaxed">
+            This shared recipe link is no longer available. Shared links are valid for 2 days.
+          </p>
+          <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+            <a href="/" className="btn-primary !justify-center">
+              Back to Receta Website
+            </a>
+            <a
+              href="#"
+              className="inline-flex items-center justify-center rounded-xl border border-black/10 px-5 py-3 text-sm font-semibold text-brand-dark hover:border-brand-orange hover:text-brand-orange transition-colors"
+            >
+              Download the app
+            </a>
+          </div>
+        </section>
+      </div>
+    </main>
+  )
+}
+
+function ErrorState({ onRetry }) {
+  return (
+    <main className="pt-32 pb-16 px-6">
+      <div className="max-w-6xl mx-auto">
+        <section className="feature-card text-center py-14 md:py-20">
+          <h1 className="font-display text-4xl text-brand-dark">Unable to Load Recipe</h1>
+          <p className="mt-3 text-brand-muted">
+            Something went wrong while fetching this shared recipe.
+          </p>
+          <button type="button" onClick={onRetry} className="btn-primary mt-6 !justify-center">
+            Try Again
+          </button>
+        </section>
+      </div>
+    </main>
+  )
 }
 
 export default function SharedRecipeFoundPage({ shareId }) {
-  const openInAppUrl = `https://reecta-r.vercel.app/r/${shareId}`
+  const [status, setStatus] = useState('loading')
+  const [recipe, setRecipe] = useState(null)
+  const [imageFailed, setImageFailed] = useState(false)
+  const [refreshCount, setRefreshCount] = useState(0)
+
+  const openInAppUrl = useMemo(() => `https://reecta-r.vercel.app/r/${shareId}`, [shareId])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadRecipe() {
+      setStatus('loading')
+      setImageFailed(false)
+
+      try {
+        const sharedRecipeRef = doc(db, 'shared_recipes', shareId)
+        const sharedRecipeSnap = await getDoc(sharedRecipeRef)
+
+        if (!sharedRecipeSnap.exists()) {
+          if (!cancelled) setStatus('expired')
+          return
+        }
+
+        const data = sharedRecipeSnap.data()
+        const expiresAt = toDateValue(data.expiredAt)
+        if (expiresAt && expiresAt.getTime() <= Date.now()) {
+          if (!cancelled) setStatus('expired')
+          return
+        }
+
+        const mappedRecipe = mapRecipeDocument(shareId, data)
+        if (!cancelled) {
+          setRecipe(mappedRecipe)
+          setStatus('ready')
+        }
+      } catch (error) {
+        console.error('Failed to fetch shared recipe:', error)
+        if (!cancelled) setStatus('error')
+      }
+    }
+
+    loadRecipe()
+    return () => {
+      cancelled = true
+    }
+  }, [shareId, refreshCount])
+
+  if (status === 'loading') return <LoadingState />
+  if (status === 'expired') return <LinkExpiredState />
+  if (status === 'error') return <ErrorState onRetry={() => setRefreshCount((count) => count + 1)} />
+  if (!recipe) return <LinkExpiredState />
+
+  const hasImage = Boolean(recipe.imageUrl) && !imageFailed
+  const ingredientGroups =
+    recipe.ingredientGroups.length > 0
+      ? recipe.ingredientGroups
+      : [{ title: 'Ingredients', items: ['No ingredients listed for this recipe yet.'] }]
+  const recipeSteps =
+    recipe.steps.length > 0
+      ? recipe.steps
+      : [{ section: null, points: ['No instructions available yet for this shared recipe.'] }]
 
   return (
     <main className="pt-28 pb-16 px-6">
       <div className="max-w-6xl mx-auto space-y-8">
-        <section className="text-center reveal">
+        <section className="text-center">
           <span className="pill bg-brand-orange/10 text-brand-orange border border-brand-orange/20">
             Shared with you
           </span>
@@ -74,12 +313,21 @@ export default function SharedRecipeFoundPage({ shareId }) {
           </p>
         </section>
 
-        <section className="relative rounded-3xl overflow-hidden shadow-[0_22px_60px_rgba(26,18,8,0.22)] reveal">
-          <img
-            src={recipe.image}
-            alt={recipe.title}
-            className="w-full h-[320px] md:h-[460px] object-cover"
-          />
+        <section className="relative rounded-3xl overflow-hidden shadow-[0_22px_60px_rgba(26,18,8,0.22)]">
+          {hasImage ? (
+            <img
+              src={recipe.imageUrl}
+              alt={recipe.title}
+              className="w-full h-[320px] md:h-[460px] object-cover"
+              onError={() => setImageFailed(true)}
+            />
+          ) : (
+            <div className="w-full h-[320px] md:h-[460px] bg-[#DAD6D4] flex items-center justify-center">
+              <div className="w-24 h-24 rounded-3xl bg-white/55 border border-white/80 flex items-center justify-center">
+                <UtensilsCrossed size={36} className="text-brand-orange" />
+              </div>
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/20" />
           <div className="absolute inset-x-0 bottom-0 p-6 md:p-9 text-white">
             <p className="text-xs md:text-sm font-semibold uppercase tracking-[0.18em] text-white/80">
@@ -109,13 +357,13 @@ export default function SharedRecipeFoundPage({ shareId }) {
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-6">
           <div className="space-y-6">
-            <section className="feature-card reveal">
+            <section className="feature-card">
               <div className="flex items-center gap-2">
                 <ShoppingBasket size={18} className="text-brand-orange" />
                 <h3 className="text-2xl font-display text-brand-dark">Ingredients</h3>
               </div>
               <div className="mt-5 grid md:grid-cols-2 gap-4">
-                {recipe.ingredientGroups.map((group) => (
+                {ingredientGroups.map((group) => (
                   <div
                     key={group.title}
                     className="rounded-2xl border border-black/5 bg-brand-cream/55 p-5 md:p-6"
@@ -136,17 +384,19 @@ export default function SharedRecipeFoundPage({ shareId }) {
               </div>
             </section>
 
-            <section className="feature-card reveal">
+            <section className="feature-card">
               <div className="flex items-center gap-2">
                 <Sparkles size={18} className="text-brand-orange" />
                 <h3 className="text-2xl font-display text-brand-dark">Instructions</h3>
               </div>
               <div className="mt-5 space-y-5">
-                {recipe.steps.map((stepGroup) => (
-                  <div key={stepGroup.section}>
-                    <h4 className="inline-flex rounded-lg bg-brand-cream px-3 py-1.5 text-brand-dark font-semibold">
-                      {stepGroup.section}
-                    </h4>
+                {recipeSteps.map((stepGroup) => (
+                  <div key={stepGroup.section || stepGroup.points.join('-')}>
+                    {stepGroup.section ? (
+                      <h4 className="inline-flex rounded-lg bg-brand-cream px-3 py-1.5 text-brand-dark font-semibold">
+                        {stepGroup.section}
+                      </h4>
+                    ) : null}
                     <ol className="mt-3 space-y-3">
                       {stepGroup.points.map((point, index) => (
                         <li key={point} className="flex items-start gap-3 text-brand-muted leading-relaxed">
@@ -164,7 +414,7 @@ export default function SharedRecipeFoundPage({ shareId }) {
           </div>
 
           <aside className="space-y-4">
-            <div className="feature-card sticky top-28 reveal">
+            <div className="feature-card sticky top-28">
               <div className="w-14 h-14 rounded-2xl bg-brand-orange/10 text-brand-orange flex items-center justify-center mx-auto">
                 <UtensilsCrossed size={24} />
               </div>
