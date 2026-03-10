@@ -10,6 +10,7 @@ import {
   Users,
   UtensilsCrossed,
 } from 'lucide-react'
+import appIcon from '../assets/Icon-iOS-Default-1024x1024@1x.png'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import StoreBadgeButton from '../components/StoreBadgeButton'
@@ -437,8 +438,8 @@ export default function SharedRecipeFoundPage({ shareId }) {
             />
           ) : (
             <div className="w-full h-[320px] md:h-[460px] bg-[#DAD6D4] flex items-center justify-center">
-              <div className="w-24 h-24 rounded-3xl bg-white/55 border border-white/80 flex items-center justify-center">
-                <UtensilsCrossed size={36} className="text-brand-orange" />
+              <div className="w-24 h-24 rounded-3xl overflow-hidden shadow-lg border-2 border-white/50">
+                <img src={appIcon} alt="Receta App" className="w-full h-full object-cover" />
               </div>
             </div>
           )}
@@ -529,8 +530,8 @@ export default function SharedRecipeFoundPage({ shareId }) {
 
           <aside className="space-y-4">
             <div className="feature-card sticky top-28">
-              <div className="w-14 h-14 rounded-2xl bg-brand-orange/10 text-brand-orange flex items-center justify-center mx-auto">
-                <UtensilsCrossed size={24} />
+            <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-md mx-auto">
+                <img src={appIcon} alt="Receta Icon" className="w-full h-full object-cover" />
               </div>
               <h3 className="mt-4 text-3xl lg:text-2xl font-display text-brand-dark text-center leading-tight">
                 Cook this in the Receta app
