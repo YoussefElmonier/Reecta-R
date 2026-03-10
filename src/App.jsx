@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import Lenis from 'lenis'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import PainPoints from './components/PainPoints'
@@ -18,6 +19,20 @@ function App() {
   const shareId = shareMatch ? decodeURIComponent(shareMatch[1]) : null
 
   useEffect(() => {
+    // Initialize Lenis
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smoothWheel: true,
+    })
+
+    function raf(time) {
+      lenis.raf(time)
+      requestAnimationFrame(raf)
+    }
+
+    requestAnimationFrame(raf)
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -29,7 +44,11 @@ function App() {
       { threshold: 0.12 }
     )
     document.querySelectorAll('.reveal').forEach((el) => observer.observe(el))
-    return () => observer.disconnect()
+
+    return () => {
+      observer.disconnect()
+      lenis.destroy()
+    }
   }, [])
 
   if (shareId) {
