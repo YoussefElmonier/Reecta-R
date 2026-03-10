@@ -158,15 +158,17 @@ function getSourceLabel(url, importType) {
 function mapRecipeDocument(shareId, data) {
   const ingredientGroups = normalizeIngredients(data.ingredients)
   const steps = normalizeSteps(data.steps, data.method)
+  const rawUrl = data.url ? String(data.url).trim() : ''
 
   return {
     id: shareId,
     title: String(data.name || '').trim() || 'Untitled Recipe',
     imageUrl: data.thumbnailUrl ? String(data.thumbnailUrl).trim() : '',
+    videoUrl: rawUrl,
     servings: normalizeOptionalField(data.servings),
     prep: normalizeOptionalField(data.prepTime),
     cook: normalizeOptionalField(data.cookTime),
-    source: getSourceLabel(data.url, data.importType),
+    source: getSourceLabel(rawUrl, data.importType),
     ingredientGroups,
     steps,
   }
@@ -289,6 +291,7 @@ export default function SharedRecipeFoundPage({ shareId }) {
   if (!recipe) return <LinkExpiredState />
 
   const hasImage = Boolean(recipe.imageUrl) && !imageFailed
+  const hasVideoUrl = Boolean(recipe.videoUrl)
   const ingredientGroups =
     recipe.ingredientGroups.length > 0
       ? recipe.ingredientGroups
@@ -314,6 +317,20 @@ export default function SharedRecipeFoundPage({ shareId }) {
         </section>
 
         <section className="relative rounded-3xl overflow-hidden shadow-[0_22px_60px_rgba(26,18,8,0.22)]">
+          {hasVideoUrl ? (
+            <div className="absolute inset-x-0 top-4 md:top-6 z-20 flex justify-center px-4">
+              <a
+                href={recipe.videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full bg-black/65 backdrop-blur-sm text-white border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-black/75 transition-colors"
+                aria-label="Open source video in a new tab"
+              >
+                <PlayCircle size={16} />
+                Watch Recipe Video
+              </a>
+            </div>
+          ) : null}
           {hasImage ? (
             <img
               src={recipe.imageUrl}
