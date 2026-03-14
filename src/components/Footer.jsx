@@ -14,7 +14,7 @@ export default function Footer() {
                 <div className="flex flex-wrap items-center gap-6 text-sm text-brand-muted">
                     <a href="#" className="hover:text-brand-orange transition-colors">Support</a>
                     <a href="mailto:hello@receta.app" className="hover:text-brand-orange transition-colors">Contact</a>
-                    <a href="#" className="hover:text-brand-orange transition-colors">Privacy Policy</a>
+                    <a href="/privacy-policy" className="hover:text-brand-orange transition-colors">Privacy Policy</a>
                     <a href="#" className="hover:text-brand-orange transition-colors">Terms &amp; Conditions</a>
                 </div>
 

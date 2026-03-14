@@ -12,11 +12,13 @@ import Pricing from './components/Pricing'
 import CTA from './components/CTA'
 import Footer from './components/Footer'
 import SharedRecipeFoundPage from './pages/SharedRecipeFoundPage'
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 
 function App() {
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '/'
   const shareMatch = pathname.match(/^\/r\/([^/]+)\/?$/)
   const shareId = shareMatch ? decodeURIComponent(shareMatch[1]) : null
+  const isPrivacyPolicyRoute = /^\/privacy-policy\/?$/.test(pathname)
 
   useEffect(() => {
     // Initialize Lenis
@@ -56,6 +58,16 @@ function App() {
       <div className="min-h-screen bg-brand-cream overflow-x-hidden">
         <Navbar />
         <SharedRecipeFoundPage shareId={shareId} />
+        <Footer />
+      </div>
+    )
+  }
+
+  if (isPrivacyPolicyRoute) {
+    return (
+      <div className="min-h-screen bg-brand-cream overflow-x-hidden">
+        <Navbar />
+        <PrivacyPolicyPage />
         <Footer />
       </div>
     )

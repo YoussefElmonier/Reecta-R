@@ -23,6 +23,10 @@
     {
       "source": "/r/:shareId",
       "destination": "/index.html"
+    },
+    {
+      "source": "/privacy-policy",
+      "destination": "/index.html"
     }
   ]
 }
